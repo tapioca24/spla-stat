@@ -4,7 +4,7 @@ import re
 import requests
 import pandas as pd
 
-USERS_DATA_FILENAME = "../data/users.csv"
+USERS_DATA_FILENAME = "data/users.csv"
 
 # csv ファイルがなければ作成しておく
 is_file = os.path.isfile(USERS_DATA_FILENAME)
