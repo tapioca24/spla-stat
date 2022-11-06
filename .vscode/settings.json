@@ -1,0 +1,8 @@
+{
+  "editor.formatOnSave": true,
+  "python.formatting.provider": "black",
+  "python.formatting.blackPath": "/opt/conda/bin/black",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python",
+  },
+}

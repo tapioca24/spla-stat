@@ -4,6 +4,7 @@ import re
 import datetime
 import requests
 import pandas as pd
+import statink
 
 USERS_DATA_FILENAME = "data/users.csv"
 
@@ -18,10 +19,11 @@ if not is_file:
 df = pd.read_csv(USERS_DATA_FILENAME)
 
 now = datetime.datetime.now()
-print(f"fetch stat.ink user on {now}")
 
 # 最新のバトルデータを stat.ink から取得する
-r = requests.get("https://stat.ink/api/internal/latest-battles")
+latest_battles_url = f"{statink.BASE_URL}/api/internal/latest-battles"
+print(f"request to {latest_battles_url}")
+r = requests.get(latest_battles_url)
 
 # バトルデータをパースしてリストに変換する
 battles_dict = json.loads(r.text)
@@ -50,4 +52,4 @@ merged_df = merged_df.drop_duplicates()
 # csv ファイルを上書きする
 merged_df.to_csv(USERS_DATA_FILENAME, index=False)
 
-print("complate")
+print("done")
