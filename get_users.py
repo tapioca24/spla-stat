@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import datetime
 import requests
 import pandas as pd
 
@@ -15,6 +16,9 @@ if not is_file:
 
 # csv ファイルから既存のユーザーを読み込む
 df = pd.read_csv(USERS_DATA_FILENAME)
+
+now = datetime.datetime.now()
+print(f"fetch stat.ink user on {now}")
 
 # 最新のバトルデータを stat.ink から取得する
 r = requests.get("https://stat.ink/api/internal/latest-battles")
@@ -45,3 +49,5 @@ merged_df = merged_df.drop_duplicates()
 
 # csv ファイルを上書きする
 merged_df.to_csv(USERS_DATA_FILENAME, index=False)
+
+print("complate")
