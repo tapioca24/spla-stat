@@ -68,9 +68,11 @@ def show_aggregated_heatmap(
             img.image.axes = ax
             ab = AnnotationBbox(img, (0, 0), xybox=(-0.35, i + 0.5), frameon=False)
             ax.add_artist(ab)
+    plt.show()
 
 
 def show_xpower_dist(details: pd.DataFrame):
     sns.set_theme()
     sns.displot(data=details, x="X Power")
+    plt.show()
     return details["X Power"].describe()

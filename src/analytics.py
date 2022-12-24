@@ -1,3 +1,4 @@
+import numpy
 import pandas as pd
 import src.statink as s
 import src.constants as c
@@ -148,6 +149,54 @@ def get_unique_user_num(details: pd.DataFrame):
     details: バトル詳細の DataFrame
     """
     return len(details["Username"].unique())
+
+
+def _detail_to_team_stat(detail: pd.Series, team: str) -> dict:
+    time = detail["Time"]
+    result_keys = [
+        "Inked",
+        "Kill & Assist",
+        "Kill",
+        "Assist",
+        "Death",
+        "Specials",
+    ]
+    team_stat = {"Win": detail["Win"][0].upper() == team}
+    for key in result_keys:
+        result_list = list(map(lambda x: detail[f"{team}{x+1} {key}"], range(4)))
+        team_stat[f"{key} / 5min"] = numpy.sum(result_list) / time * 300
+
+    team_stat.update(
+        {
+            "Kill-Death / 5min": team_stat["Kill / 5min"] - team_stat["Death / 5min"],
+            "Involved": team_stat["Kill & Assist / 5min"] / team_stat["Kill / 5min"]
+            if team_stat["Kill / 5min"] > 0
+            else None,
+        }
+    )
+    return team_stat
+
+
+def details_to_teams(details: pd.DataFrame) -> pd.DataFrame:
+    """
+    バトル詳細をチーム単位に整形する
+
+    details: バトル詳細の DataFrame
+    """
+
+    def detail_to_teams(detail: pd.Series):
+        team_names = ["A", "B"]
+        return list(map(lambda x: _detail_to_team_stat(detail, x), team_names))
+
+    teams = []
+    common_cols = ["Username", "Url", "Datetime", "Rule", "Stage", "Time"]
+    for i, row in details.iterrows():
+        team_objs = detail_to_teams(row)
+        common = row[common_cols].to_dict()
+        team_objs = list(map(lambda x: {**common, **x}, team_objs))
+        teams.extend(team_objs)
+    df = pd.DataFrame(teams)
+    return df
 
 
 def details_to_players(
