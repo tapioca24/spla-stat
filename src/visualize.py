@@ -73,6 +73,9 @@ def show_aggregated_heatmap(
 
 def show_xpower_dist(details: pd.DataFrame):
     sns.set_theme()
-    sns.displot(data=details, x="X Power")
+
+    xpower_key = "X Power Before" if "X Power Before" in details else "X Power"
+    ax = sns.displot(data=details, x=xpower_key)
+    ax.set(xlabel="X Power")
     plt.show()
-    return details["X Power"].describe()
+    return details[xpower_key].describe()

@@ -1,4 +1,5 @@
 DATA_DIR = "/workdir/data"
+STATINK_CSV_DIR = "/workdir/csv"
 
 # ユーザー一覧
 USER_DATA_PATH = f"{DATA_DIR}/users.csv"

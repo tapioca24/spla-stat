@@ -3,7 +3,7 @@ import json
 import time
 import re
 import datetime as dt
-from typing import Union
+from typing import Union, Optional
 
 import requests
 import pandas as pd
@@ -340,6 +340,32 @@ def _get_win(result: str) -> str:
     return "unknown"
 
 
+def _get_xpower(th) -> tuple[Optional[float], Optional[float]]:
+    if not th:
+        return None, None
+
+    td = th.next_sibling
+    contents = td.contents
+
+    if len(contents) == 0:
+        return None, None
+
+    if len(contents) == 1:
+        # 1,980.0
+        xpower_before = float(contents[0].replace(",", ""))
+        return xpower_before, None
+
+    if contents[0].name == "span":
+        # ? -> 2,000.0
+        xpower_after = float(contents[2].replace(",", ""))
+        return None, xpower_after
+
+    # 1,980.0 -> 2,000.0
+    xpower_before = float(contents[0].replace(",", ""))
+    xpower_after = float(contents[2].replace(",", ""))
+    return xpower_before, xpower_after
+
+
 def _get_stats_info(text: str) -> str:
     if "Used in global stats: Yes" in text:
         return "allow"
@@ -381,25 +407,21 @@ def _get_battle_data(battle_soup) -> dict:
     result = _get_result(texts)
     win = _get_win(result)
 
+    # Progress
+    th = battle_soup.find("th", text="Series Progress")
+    progress = th.next_sibling.text.replace(" ", "") if th else None
+
     # X Power
-    if lobby == "xmatch":
-        th = battle_soup.find("th", text="X Power")
-        if th:
-            td = th.next_sibling
-            contents = td.contents
-            if len(contents) > 0:
-                if contents[0].name == "span":
-                    xpower = None
-                else:
-                    xpower = float(contents[0].replace(",", ""))
-            else:
-                xpower = None
-        else:
-            xpower = None
+    th = battle_soup.find("th", text="X Power")
+    xpower_before, xpower_after = _get_xpower(th)
 
     # Time
     td = battle_soup.find("th", text="Elapsed Time").next_sibling
     time = int(re.search(r"\((.+) seconds\)", td.text).group(1))
+
+    # User Agent
+    td = battle_soup.find("th", text="User Agent").next_sibling
+    [user_agent, user_agent_version] = td.text.split(" / ")
 
     # Game Version
     td = battle_soup.find("th", text="Game Version").next_sibling
@@ -409,30 +431,21 @@ def _get_battle_data(battle_soup) -> dict:
     td = battle_soup.find("th", text="Stats").next_sibling
     stats = _get_stats_info(td.text)
 
-    if lobby == "xmatch":
-        battle_data = {
-            "Datetime": battle_dt,
-            "Rule": rule,
-            "Lobby": lobby,
-            "Stage": stage,
-            "Win": win,
-            "X Power": xpower,
-            "Time": time,
-            "Game Version": game_version,
-            "Stats": stats,
-        }
-    else:
-        battle_data = {
-            "Datetime": battle_dt,
-            "Rule": rule,
-            "Lobby": lobby,
-            "Stage": stage,
-            "Win": win,
-            "Time": time,
-            "Game Version": game_version,
-            "Stats": stats,
-        }
-
+    battle_data = {
+        "Datetime": battle_dt,
+        "Rule": rule,
+        "Lobby": lobby,
+        "Stage": stage,
+        "Win": win,
+        "Progress": progress,
+        "X Power Before": xpower_before,
+        "X Power After": xpower_after,
+        "Time": time,
+        "User Agent": user_agent,
+        "User Agent Version": user_agent_version,
+        "Game Version": game_version,
+        "Stats": stats,
+    }
     return battle_data
 
 
@@ -503,7 +516,7 @@ def _get_player_data(
     }
 
 
-def _get_team_data(
+def _get_team_players_data(
     team_soup,
     me_index,
     weapon_index,
@@ -543,7 +556,7 @@ def _get_players_data(players_soup) -> dict:
     alpha = players_soup.find("th", text="Good Guys").parent
     bravo = players_soup.find("th", text="Bad Guys").parent
 
-    alpha_players = _get_team_data(
+    alpha_players = _get_team_players_data(
         alpha,
         me_index,
         weapon_index,
@@ -552,7 +565,7 @@ def _get_players_data(players_soup) -> dict:
         death_index,
         specials_index,
     )
-    bravo_players = _get_team_data(
+    bravo_players = _get_team_players_data(
         bravo,
         me_index,
         weapon_index,
@@ -565,6 +578,21 @@ def _get_players_data(players_soup) -> dict:
     return {"Alpha": alpha_players, "Bravo": bravo_players}
 
 
+def _get_team_data(team_soup) -> dict:
+    classes = team_soup["class"]
+    if len(classes) < 2:
+        return {"Color": None}
+    color_class = classes[1]
+    color_code = f"#{color_class[3:9]}"
+    return {"Color": color_code}
+
+
+def _get_teams_data(players_soup) -> dict:
+    alpha = players_soup.find("th", text="Good Guys").parent
+    bravo = players_soup.find("th", text="Bad Guys").parent
+    return {"Alpha": _get_team_data(alpha), "Bravo": _get_team_data(bravo)}
+
+
 def _get_battle_detail(page_url: str):
     r = requests.get(page_url)
     soup = BeautifulSoup(r.text, "html.parser")
@@ -572,16 +600,21 @@ def _get_battle_detail(page_url: str):
     username = re.search(r"/@(.+)/spl3", page_url).group(1)
 
     battle_soup = soup.find(id="battle")
+    if battle_soup is None:
+        raise Exception("battle not found")
+
     battle_data = _get_battle_data(battle_soup)
 
     players_soup = soup.find(id="players")
     players_data = _get_players_data(players_soup)
+    teams_data = _get_teams_data(players_soup)
 
     battle_detail = {
         "Username": username,
         "Url": page_url,
         **battle_data,
     }
+    battle_detail.update({"A Color": teams_data["Alpha"]["Color"]})
     for index, player in enumerate(players_data["Alpha"]):
         player_name = f"A{index + 1}"
         battle_detail.update(
@@ -597,6 +630,7 @@ def _get_battle_detail(page_url: str):
                 f"{player_name} Specials": player["Specials"],
             }
         )
+    battle_detail.update({"B Color": teams_data["Bravo"]["Color"]})
     for index, player in enumerate(players_data["Bravo"]):
         player_name = f"B{index + 1}"
         battle_detail.update(
@@ -666,7 +700,11 @@ def update_battle_details(battles: pd.DataFrame, details_filepath: str, delay: i
         page_url = battle["Url"]
 
         print(f"({index+1}/{battle_num}) request to {page_url}")
-        detail_list_item = _get_battle_detail(page_url)
-        detail_list.append(detail_list_item)
+        try:
+            detail_list_item = _get_battle_detail(page_url)
+            detail_list.append(detail_list_item)
+        except Exception as e:
+            print(e)
+            continue
 
     _append_new_details(details, detail_list, details_filepath)

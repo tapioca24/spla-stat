@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import pandas as pd
 import src.statink as s
 import src.constants as c
@@ -12,7 +12,23 @@ def load_details(details_path: str, use_deny: bool = False) -> pd.DataFrame:
     use_deny: 統計情報利用不可のバトルを含める
     """
     details = pd.read_csv(details_path)
-    return details if use_deny else details[details["Stats"] == "allow"]
+    if not use_deny:
+        details = details[details["Stats"] == "allow"]
+    return details
+
+
+def add_color_pair_column(details: pd.DataFrame) -> pd.DataFrame:
+    def get_color_pair(row: pd.Series) -> str:
+        if pd.notna(row["A Color"]) and pd.notna(row["B Color"]):
+            colors = list(map(lambda team: row[f"{team} Color"], ["A", "B"]))
+            sorted_colors = sorted(colors, reverse=True)
+            return "-".join(sorted_colors)
+        return np.nan
+
+    if "A Color" in details and "B Color" in details:
+        details["Color Pair"] = details.apply(get_color_pair, axis=1)
+
+    return details
 
 
 def _extract_columns_for_player_info(details: pd.DataFrame) -> pd.DataFrame:
@@ -164,7 +180,7 @@ def _detail_to_team_stat(detail: pd.Series, team: str) -> dict:
     team_stat = {"Win": detail["Win"][0].upper() == team}
     for key in result_keys:
         result_list = list(map(lambda x: detail[f"{team}{x+1} {key}"], range(4)))
-        team_stat[f"{key} / 5min"] = numpy.sum(result_list) / time * 300
+        team_stat[f"{key} / 5min"] = np.sum(result_list) / time * 300
 
     team_stat.update(
         {
