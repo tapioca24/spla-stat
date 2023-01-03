@@ -14,9 +14,6 @@ import src.statink as s
 import src.constants as c
 
 
-TZ_JST = dt.timezone(dt.timedelta(hours=9))
-
-
 def update_source_weapons():
     """
     ブキデータを取得して更新する
@@ -94,6 +91,22 @@ def update_source_stages():
     stage_obj_list = list(map(stage_to_sobj, stage_json))
     stage = pd.DataFrame(stage_obj_list)
     stage.to_csv(c.SOURCE_STAGE_PATH, index=False)
+
+
+def update_source_lobbies():
+    """
+    ロビーデータを取得して更新する
+    """
+    os.makedirs(c.SOURCE_PATH, exist_ok=True)
+    r = requests.get(s.API_LOBBY_URL)
+    lobby_json = json.loads(r.content)
+
+    def lobby_to_sobj(lobby: object) -> object:
+        return {"Key": lobby["key"], "Name": lobby["name"]["ja_JP"]}
+
+    lobby_obj_list = list(map(lobby_to_sobj, lobby_json))
+    lobby = pd.DataFrame(lobby_obj_list)
+    lobby.to_csv(c.SOURCE_LOBBY_PATH, index=False)
 
 
 def _download_image_from_statink(asset_type: str, key: str, dst_dir: str):
@@ -176,7 +189,7 @@ def _create_user_battle_list_item(battle_row):
     # Datetime
     time_tag = battle_row.select_one(".cell-datetime time")
     battle_dt_str = time_tag.get("datetime")
-    battle_dt = dt.datetime.fromisoformat(battle_dt_str).astimezone(TZ_JST)
+    battle_dt = dt.datetime.fromisoformat(battle_dt_str).astimezone(u.TZ_JST)
 
     # Url
     battle_path = battle_row.find("a", text="Detail").get("href")
@@ -382,7 +395,7 @@ def _get_battle_data(battle_soup) -> dict:
     # Battle End
     td = battle_soup.find("th", text="Battle End").next_sibling
     battle_dt_str = td.find("time").get("datetime")
-    battle_dt = dt.datetime.fromisoformat(battle_dt_str).astimezone(TZ_JST)
+    battle_dt = dt.datetime.fromisoformat(battle_dt_str).astimezone(u.TZ_JST)
 
     td = battle_soup.find("th", text="Mode").next_sibling
     images = td.find_all("img")

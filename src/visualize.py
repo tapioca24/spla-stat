@@ -17,6 +17,7 @@ def get_translations():
         c.SOURCE_TYPE_PATH,
         c.SOURCE_STAGE_PATH,
         c.SOURCE_RULE_PATH,
+        c.SOURCE_LOBBY_PATH,
     ]
     dfs = list(map(lambda x: pd.read_csv(x)[["Key", "Name"]], source_list))
     translation = pd.concat(dfs, ignore_index=True).set_index("Key")

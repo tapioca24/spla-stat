@@ -1,5 +1,15 @@
 import os
+import datetime as dt
 import requests
+
+TZ_JST = dt.timezone(dt.timedelta(hours=9))
+
+
+def date_range(start, stop, step=dt.timedelta(days=1)):
+    current = start
+    while current < stop:
+        yield current
+        current += step
 
 
 def download_file(url: str, dst_path: str):

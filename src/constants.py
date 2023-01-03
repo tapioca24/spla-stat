@@ -17,6 +17,8 @@ SOURCE_SPECIAL_PATH = f"{SOURCE_PATH}/special.csv"
 SOURCE_TYPE_PATH = f"{SOURCE_PATH}/type.csv"
 SOURCE_RULE_PATH = f"{SOURCE_PATH}/rule.csv"
 SOURCE_STAGE_PATH = f"{SOURCE_PATH}/stage.csv"
+SOURCE_LOBBY_PATH = f"{SOURCE_PATH}/lobby.csv"
+SOURCE_MAIN_POOL_PATH = f"{SOURCE_PATH}/main_pool.csv"
 
 # 画像用ディレクトリ
 IMAGES_DIR = "/workdir/images"
