@@ -1,7 +1,9 @@
+from functools import cmp_to_key
 import numpy as np
 import pandas as pd
 import src.statink as s
 import src.constants as c
+import src.utils as u
 
 
 def load_details(details_path: str, use_deny: bool = False) -> pd.DataFrame:
@@ -18,10 +20,19 @@ def load_details(details_path: str, use_deny: bool = False) -> pd.DataFrame:
 
 
 def add_color_pair_column(details: pd.DataFrame) -> pd.DataFrame:
+    def cmp(a: str, b: str) -> int:
+        ah = u.color_code_to_hsl(a)[0]
+        bh = u.color_code_to_hsl(b)[0]
+
+        ag = abs(ah - 100)
+        bg = abs(bh - 100)
+
+        return -1 if ag > bg else 1
+
     def get_color_pair(row: pd.Series) -> str:
         if pd.notna(row["A Color"]) and pd.notna(row["B Color"]):
             colors = list(map(lambda team: row[f"{team} Color"], ["A", "B"]))
-            sorted_colors = sorted(colors, reverse=True)
+            sorted_colors = sorted(colors, key=cmp_to_key(cmp))
             return "-".join(sorted_colors)
         return np.nan
 
